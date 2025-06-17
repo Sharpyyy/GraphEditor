@@ -105,12 +105,6 @@ namespace Form1
                         dragStart = e.Location;
                         return;
                     }
-                    if (selectedShape != null)
-                    {
-                        dragStart = e.Location;
-                        isDragging = true;
-                    }
-
                 }
 
                 // Проверка — попали ли в хэндлы
@@ -166,18 +160,16 @@ namespace Form1
                 panel2.Invalidate();
             }
 
-        }
 
 
 
         private void panel2_MouseMove(object sender, MouseEventArgs e)
         {
-            // Ресайзинг
             if (isResizing && selectedShape != null)
             {
                 if (selectedShape is RectangleShape rectShape)
                 {
-                    var rect = rectShape.Rect;
+                    rect = rectShape.Rect;
                     switch (selectedHandleIndex)
                     {
                         case 0: rect = Rectangle.FromLTRB(e.X, e.Y, rect.Right, rect.Bottom); break;
@@ -342,7 +334,6 @@ namespace Form1
                     ellipse.Draw(g, shape == selectedShape);
             }
 
-
             if (isDrawing && currentTool == Tool.Rectangle)
             {
                 Rectangle tempRect = GetRectangle(startPoint, endPoint);
@@ -468,31 +459,7 @@ namespace Form1
             currentTool = Tool.Fill;
         }
 
-        private void FloodFill(Bitmap bmp, Point pt, Color targetColor, Color replacementColor)
-        {
-            if (targetColor.ToArgb() == replacementColor.ToArgb()) return;
-            if (bmp.GetPixel(pt.X, pt.Y).ToArgb() != targetColor.ToArgb()) return;
 
-            Queue<Point> pixels = new Queue<Point>();
-            pixels.Enqueue(pt);
-
-            while (pixels.Count > 0)
-            {
-                Point temp = pixels.Dequeue();
-                if (temp.X < 0 || temp.Y < 0 || temp.X >= bmp.Width || temp.Y >= bmp.Height)
-                    continue;
-
-                if (bmp.GetPixel(temp.X, temp.Y).ToArgb() != targetColor.ToArgb())
-                    continue;
-
-                bmp.SetPixel(temp.X, temp.Y, replacementColor);
-
-                pixels.Enqueue(new Point(temp.X - 1, temp.Y));
-                pixels.Enqueue(new Point(temp.X + 1, temp.Y));
-                pixels.Enqueue(new Point(temp.X, temp.Y - 1));
-                pixels.Enqueue(new Point(temp.X, temp.Y + 1));
-            }
-        }
 
 
         private void Form1_Load(object sender, EventArgs e)

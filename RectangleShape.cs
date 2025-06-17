@@ -82,8 +82,16 @@ namespace Form1
 
         public bool Contains(Point p)
         {
-            // Упрощенно — без учета поворота
-            return Rect.Contains(p);
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                path.AddRectangle(Rect);
+                using (Matrix m = new Matrix())
+                {
+                    m.RotateAt(Rotation, new PointF(Rect.X + Rect.Width / 2f, Rect.Y + Rect.Height / 2f));
+                    path.Transform(m);
+                }
+                return path.IsVisible(p);
+            }
         }
 
         public GraphicsPath GetTransformedPath()

@@ -662,13 +662,13 @@ namespace Form1
                             polyline.Color = colorDialog.Color;
                         }
                         else if (selectedShape is BezierShape bezier)
-                        {
-                            bezier.Color = colorDialog.Color;
-                        }
-                        else if (selectedShape is ClosedPolylineShape closed)
-                        {
-                            closed.Color = colorDialog.Color;
-                        }
+{
+    bezier.Color = colorDialog.Color;
+}
+else if (selectedShape is ClosedPolylineShape closed)
+{
+    closed.Color = colorDialog.Color;
+}
 
                         panel2.Invalidate();
                     }

@@ -7,7 +7,7 @@
     <ProjectGuid>{440B503C-D3E2-4D7F-B655-6443CF0DBE6F}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>GraphEditor</RootNamespace>
-    <AssemblyName>Form1</AssemblyName>
+    <AssemblyName>GraphEditor</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -31,6 +31,9 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>color_palette_brush_paint_icon_193916.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -85,6 +88,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="color_palette_brush_paint_icon_193916.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

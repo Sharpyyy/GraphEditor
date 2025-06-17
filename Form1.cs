@@ -18,7 +18,8 @@ namespace Form1
             Hexagon,// ← добавили
             Fill,
             Polyline,
-            Bezier
+            Bezier,
+            ClosedPolyline
         }
 
         Tool currentTool = Tool.None;
@@ -92,6 +93,13 @@ namespace Form1
             isDrawingBezier = false;
         }
 
+        private void buttonClosedPolyline_Click(object sender, EventArgs e)
+        {
+            currentTool = Tool.ClosedPolyline;
+            polylinePoints.Clear();
+            isDrawingPolyline = false;
+        }
+
 
 
         private void panel2_MouseDown(object sender, MouseEventArgs e)
@@ -102,6 +110,33 @@ namespace Form1
                 isDrawing = true;
                 return;
             }
+
+            if (currentTool == Tool.ClosedPolyline)
+            {
+                if (e.Button == MouseButtons.Right && polylinePoints.Count >= 3)
+                {
+                    shapes.Add(new ClosedPolylineShape(polylinePoints));
+                    polylinePoints.Clear();
+                    isDrawingPolyline = false;
+                    panel2.Invalidate();
+                    return;
+                }
+                else if (e.Button == MouseButtons.Left)
+                {
+                    if (!isDrawingPolyline)
+                    {
+                        polylinePoints.Clear();
+                        isDrawingPolyline = true;
+                    }
+
+                    polylinePoints.Add(e.Location);
+                    panel2.Invalidate();
+                    return;
+                }
+            }
+
+
+
             if (currentTool == Tool.Polyline)
             {
                 if (e.Button == MouseButtons.Right) // ПКМ для автоматической ломаной
@@ -217,6 +252,8 @@ namespace Form1
                             handles = polylineShape.GetHandles();
                         else if (selectedShape is BezierShape bezierShape)
                             handles = bezierShape.GetHandles();
+                        else if (selectedShape is ClosedPolylineShape closedShape)
+                            handles = closedShape.GetHandles();
 
 
 
@@ -263,6 +300,11 @@ namespace Form1
                         else if (shapes[i] is BezierShape bezier && bezier.Contains(e.Location))
                         {
                             selectedShape = bezier;
+                            break;
+                        }
+                        else if (shapes[i] is ClosedPolylineShape closed && closed.Contains(e.Location))
+                        {
+                            selectedShape = closed;
                             break;
                         }
                 }
@@ -354,6 +396,16 @@ namespace Form1
                         return;
                     }
                 }
+                else if (selectedShape is ClosedPolylineShape closedShape)
+                {
+                    if (selectedHandleIndex >= 0 && selectedHandleIndex < closedShape.Points.Count)
+                    {
+                        closedShape.MovePoint(selectedHandleIndex, e.Location);
+                        panel2.Invalidate();
+                        return;
+                    }
+                }
+
 
 
 
@@ -405,6 +457,20 @@ namespace Form1
                         polylineShape.Rect.Width,
                         polylineShape.Rect.Height);
                 }
+                else if (selectedShape is ClosedPolylineShape closedShape)
+                {
+                    List<Point> newPoints = new List<Point>();
+                    foreach (var p in closedShape.Points)
+                    {
+                        newPoints.Add(new Point(p.X + dx, p.Y + dy));
+                    }
+                    closedShape.Points = newPoints;
+                    closedShape.Rect = new Rectangle(
+                        closedShape.Rect.X + dx,
+                        closedShape.Rect.Y + dy,
+                        closedShape.Rect.Width,
+                        closedShape.Rect.Height);
+                }
 
                 dragStart = e.Location;
                 panel2.Invalidate();
@@ -453,6 +519,16 @@ namespace Form1
                     float angle = GetAngle(center, dragStart, e.Location);
                     polylineShape.Rotation += angle;
                 }
+                else if (selectedShape is ClosedPolylineShape closedShape)
+                {
+                    center = new PointF(
+                        closedShape.Rect.X + closedShape.Rect.Width / 2f,
+                        closedShape.Rect.Y + closedShape.Rect.Height / 2f);
+
+                    float angle = GetAngle(center, dragStart, e.Location);
+                    closedShape.Rotation += angle;
+                }
+
 
                 dragStart = e.Location;
                 panel2.Invalidate();
@@ -500,6 +576,17 @@ namespace Form1
                     panel2.Invalidate();
                 }
             }
+            else if (currentTool == Tool.ClosedPolyline && isDrawingPolyline && e.Clicks == 2)
+            {
+                if (polylinePoints.Count >= 3)
+                {
+                    shapes.Add(new ClosedPolylineShape(polylinePoints));
+                    polylinePoints.Clear();
+                    isDrawingPolyline = false;
+                    panel2.Invalidate();
+                }
+            }
+
             else if (currentTool == Tool.Polyline && isDrawingPolyline)
             {
                 if (e.Clicks == 2) // Двойной клик завершает ломаную
@@ -574,6 +661,14 @@ namespace Form1
                         {
                             polyline.Color = colorDialog.Color;
                         }
+                        else if (selectedShape is BezierShape bezier)
+                        {
+                            bezier.Color = colorDialog.Color;
+                        }
+                        else if (selectedShape is ClosedPolylineShape closed)
+                        {
+                            closed.Color = colorDialog.Color;
+                        }
 
                         panel2.Invalidate();
                     }
@@ -598,7 +693,10 @@ namespace Form1
                     polyline.Draw(g, shape == selectedShape);
                 else if (shape is BezierShape bezier)
                     bezier.Draw(g, shape == selectedShape);
+                else if (shape is ClosedPolylineShape closed)
+                    closed.Draw(g, shape == selectedShape);
             }
+
 
             if (isDrawing && currentTool == Tool.Rectangle)
             {
@@ -623,6 +721,31 @@ namespace Form1
 
 
             }
+            else if (isDrawingPolyline && currentTool == Tool.ClosedPolyline && polylinePoints.Count >= 2)
+            {
+                using (Pen pen = new Pen(Color.Orange, 1))
+                {
+                    g.DrawLines(pen, polylinePoints.ToArray());
+
+                    // Можно нарисовать пунктир от последней точки к первой (для визуального замыкания)
+                    if (polylinePoints.Count >= 3)
+                    {
+                        using (Pen dashedPen = new Pen(Color.Orange, 1))
+                        {
+                            dashedPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                            g.DrawLine(dashedPen, polylinePoints[polylinePoints.Count - 1], polylinePoints[0]);
+                        }
+                    }
+                }
+
+                // Нарисовать точки
+                foreach (var pt in polylinePoints)
+                {
+                    g.FillRectangle(Brushes.Red, pt.X - 2, pt.Y - 2, 4, 4);
+                }
+            }
+
+
             else if (isDrawingPolyline && currentTool == Tool.Polyline && polylinePoints.Count >= 2)
             {
                 using (Pen pen = new Pen(Color.Red, 1))
@@ -766,6 +889,14 @@ namespace Form1
                 isDrawingBezier = false;
                 panel2.Invalidate();
             }
+            else if (e.KeyCode == Keys.Enter && currentTool == Tool.ClosedPolyline && isDrawingPolyline && polylinePoints.Count >= 3)
+            {
+                shapes.Add(new ClosedPolylineShape(polylinePoints));
+                polylinePoints.Clear();
+                isDrawingPolyline = false;
+                panel2.Invalidate();
+            }
+
 
         }
 

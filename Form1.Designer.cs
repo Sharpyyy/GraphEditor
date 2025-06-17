@@ -172,6 +172,7 @@
             this.button6.Size = new System.Drawing.Size(48, 54);
             this.button6.TabIndex = 5;
             this.button6.UseVisualStyleBackColor = true;
+            this.button6.Click += new System.EventHandler(this.buttonClosedPolyline_Click);
             // 
             // button5
             // 
@@ -255,9 +256,10 @@
             // 
             // panel2
             // 
+            this.panel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel2.Location = new System.Drawing.Point(63, 3);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(5000, 4994);
+            this.panel2.Size = new System.Drawing.Size(4934, 4994);
             this.panel2.TabIndex = 1;
             this.panel2.Paint += new System.Windows.Forms.PaintEventHandler(this.panel2_Paint);
             this.panel2.MouseDown += new System.Windows.Forms.MouseEventHandler(this.panel2_MouseDown);
@@ -268,7 +270,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1420, 795);
+            this.ClientSize = new System.Drawing.Size(1904, 1041);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Controls.Add(this.panel1);
             this.MainMenuStrip = this.menuStrip1;

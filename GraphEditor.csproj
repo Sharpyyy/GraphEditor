@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BezierShape.cs" />
+    <Compile Include="ClosedPolylineShape.cs" />
     <Compile Include="EllipseShape.cs" />
     <Compile Include="FilledArea.cs" />
     <Compile Include="Form1.cs">

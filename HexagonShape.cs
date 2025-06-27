@@ -11,7 +11,7 @@ namespace GraphEditor
         public float Rotation { get; set; } = 0;
         public Color Color { get; set; } = Color.Black;
         public Color FillColor { get; set; } = Color.Transparent;
-
+        public bool IsFilled { get; set; } = false;
         public HexagonShape(Rectangle rect)
         {
             Rect = rect;
@@ -39,28 +39,25 @@ namespace GraphEditor
         }
         public void Draw(Graphics g, bool isSelected = false)
         {
-            PointF[] points = GetHexagonPoints();
+            Point[] points = CalculateHexagonPoints(Rect);
 
-            using (Matrix m = new Matrix())
+            // Заливка
+            if (FillColor != Color.Transparent)
             {
-                m.RotateAt(Rotation, new PointF(Rect.X + Rect.Width / 2, Rect.Y + Rect.Height / 2));
-                g.Transform = m;
-
-                if (FillColor != Color.Transparent)
+                using (Brush brush = new SolidBrush(FillColor))
                 {
-                    using (Brush fillBrush = new SolidBrush(FillColor))
-                    {
-                        g.FillPolygon(fillBrush, points);
-                    }
+                    g.FillPolygon(brush, points);
                 }
-
-                using (Pen pen = new Pen(Color, isSelected ? 3 : 1))
-                {
-                    g.DrawPolygon(pen, points);
-                }
-
-                g.ResetTransform();
             }
+
+            // Контур
+            using (Pen pen = new Pen(Color))
+            {
+                g.DrawPolygon(pen, points);
+            }
+
+            g.ResetTransform();
+  
 
             if (isSelected)
             {

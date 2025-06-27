@@ -13,6 +13,7 @@ namespace Form1
 
         public float RotationAngle = 0f;
 
+        public bool IsFilled { get; set; } = false;
         public Color FillColor { get; set; } = Color.Transparent;
 
         public RectangleShape(Rectangle rect)
@@ -50,24 +51,24 @@ namespace Form1
             {
                 m.RotateAt(Rotation, new PointF(Rect.X + Rect.Width / 2, Rect.Y + Rect.Height / 2));
                 g.Transform = m;
-
-                // Заливка
-                if (FillColor != Color.Transparent)
-                {
-                    using (Brush fillBrush = new SolidBrush(FillColor))
-                    {
-                        g.FillRectangle(fillBrush, Rect);
-                    }
-                }
-
-                // Обводка
-                using (Pen pen = new Pen(Color, isSelected ? 3 : 1))
-                {
-                    g.DrawRectangle(pen, Rect);
-                }
-
-                g.ResetTransform();
             }
+
+            // Заливка
+            if (FillColor != Color.Transparent)
+            {
+                using (Brush brush = new SolidBrush(FillColor))
+                {
+                    g.FillRectangle(brush, Rect);
+                }
+            }
+
+            // Контур
+            using (Pen pen = new Pen(Color))
+            {
+                g.DrawRectangle(pen, Rect);
+            }
+
+            g.ResetTransform();
 
             // Хэндлы
             if (isSelected)

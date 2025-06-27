@@ -11,7 +11,7 @@ namespace GraphEditor
         public float Rotation { get; set; } = 0;
         public Color Color { get; set; } = Color.Black;
         public Color FillColor { get; set; } = Color.Transparent;
-
+        public bool IsFilled { get; set; } = false;
         public EllipseShape(Rectangle rect)
         {
             Rect = rect;
@@ -23,12 +23,11 @@ namespace GraphEditor
             {
                 m.RotateAt(Rotation, new PointF(Rect.X + Rect.Width / 2, Rect.Y + Rect.Height / 2));
                 g.Transform = m;
-
                 if (FillColor != Color.Transparent)
                 {
-                    using (Brush fillBrush = new SolidBrush(FillColor))
+                    using (Brush brush = new SolidBrush(FillColor))
                     {
-                        g.FillEllipse(fillBrush, Rect);
+                        g.FillEllipse(brush, Rect);
                     }
                 }
 

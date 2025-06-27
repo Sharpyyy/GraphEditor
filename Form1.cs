@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Form1
@@ -33,9 +34,9 @@ namespace Form1
         private bool isRotating = false;
         private Point dragStart;
 
-        
 
-     
+
+
         List<object> shapes = new List<object>();
         private object selectedShape = null;
 
@@ -106,6 +107,23 @@ namespace Form1
         {
             if (currentTool == Tool.Rectangle || currentTool == Tool.Ellipse || currentTool == Tool.Hexagon)
             {
+                // если клик попал по уже существующей фигуре — не начинать рисование
+                foreach (var shape in shapes)
+                {
+                    if (shape is RectangleShape rect && rect.Contains(e.Location))
+                        return;
+                    if (shape is EllipseShape ellipse && ellipse.Contains(e.Location))
+                        return;
+                    if (shape is HexagonShape hex && hex.Contains(e.Location))
+                        return;
+                    if (shape is PolylineShape poly && poly.Contains(e.Location))
+                        return;
+                    if (shape is BezierShape bezier && bezier.Contains(e.Location))
+                        return;
+                    if (shape is ClosedPolylineShape closed && closed.Contains(e.Location))
+                        return;
+                }
+
                 startPoint = e.Location;
                 isDrawing = true;
                 return;
@@ -151,8 +169,8 @@ namespace Form1
                     return;
                 }
                 else if (e.Button == MouseButtons.Left) // ЛКМ для ручного рисования
-            {
-                if (!isDrawingPolyline)
+                {
+                    if (!isDrawingPolyline)
                     {
                         polylinePoints.Clear();
                         polylinePoints.Add(e.Location);
@@ -171,158 +189,230 @@ namespace Form1
             {
                 if (e.Button == MouseButtons.Left)
                 {
+                    // Добавление точки
                     bezierPoints.Add(e.Location);
                     isDrawingBezier = true;
-
+                    panel2.Invalidate();
+                }
+                else if (e.Button == MouseButtons.Right)
+                {
+                    // Завершение построения при ПКМ
                     if (bezierPoints.Count >= 4 && (bezierPoints.Count - 1) % 3 == 0)
                     {
-                        // После каждых 4, 7, 10... точек (1 + 3*n), строим кривую
                         shapes.Add(new BezierShape(new List<Point>(bezierPoints)));
                         bezierPoints.Clear();
                         isDrawingBezier = false;
+                        panel2.Invalidate();
                     }
-
-                    panel2.Invalidate();
+                    else
+                    {
+                        MessageBox.Show("Для построения кривой Безье нужно 4, 7, 10 и т.д. точек (всегда 1 + 3×N).", "Недостаточно точек", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
 
                 return;
             }
 
+
             if (currentTool == Tool.Fill)
             {
-                if (selectedShape != null)
+                using (ColorDialog colorDialog = new ColorDialog())
+                {
+                    if (colorDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        Bitmap bmp = new Bitmap(panel2.Width, panel2.Height);
+                        panel2.DrawToBitmap(bmp, panel2.ClientRectangle);
+
+                        Color clickedColor = bmp.GetPixel(e.X, e.Y);
+                        Color fillColor = colorDialog.Color;
+
+                        FloodFill(bmp, e.Location, clickedColor, fillColor);
+                        panel2.BackgroundImage = bmp;
+
+                        // Обход всех фигур и установка IsFilled
+                        foreach (var shape in shapes)
+                        {
+                            if (shape is RectangleShape rect && rect.Contains(e.Location))
+                            {
+                                rect.IsFilled = true;
+                                break;
+                            }
+                            else if (shape is EllipseShape ellipse && ellipse.Contains(e.Location))
+                            {
+                                ellipse.IsFilled = true;
+                                break;
+                            }
+                            else if (shape is HexagonShape hex && hex.Contains(e.Location))
+                            {
+                                hex.IsFilled = true;
+                                break;
+                            }
+                            else if (shape is PolylineShape polyline && polyline.Contains(e.Location))
+                            {
+                                polyline.IsFilled = true;
+                                break;
+                            }
+                        }
+
+                        panel2.Invalidate();
+                    }
+                }
+                return;
+            }
+
+
+
+            if (currentTool == Tool.Select)
+            {
+                isDrawing = false;
+                isDrawingPolyline = false;
+                isDrawingBezier = false;
+                polylinePoints.Clear();
+                bezierPoints.Clear();
+            }
+
+
+
+            if (currentTool == Tool.Select)
+            {
+                
+
+
+                // Попытка начать вращение при зажатом Shift
+                if (ModifierKeys == Keys.Shift && selectedShape != null)
                 {
                     if ((selectedShape is RectangleShape rectShape && rectShape.Contains(e.Location)) ||
                         (selectedShape is EllipseShape ellipseShape && ellipseShape.Contains(e.Location)) ||
-                        (selectedShape is HexagonShape hexagonShape && hexagonShape.Contains(e.Location)) ||
-                        (selectedShape is PolylineShape polylineShape && polylineShape.Contains(e.Location)))
+                        (selectedShape is HexagonShape hexagonShape && hexagonShape.Contains(e.Location)))
                     {
-                        using (ColorDialog colorDialog = new ColorDialog())
-                        {
-                            if (colorDialog.ShowDialog() == DialogResult.OK)
-                            {
-                                if (selectedShape is RectangleShape rect)
-                                    rect.FillColor = colorDialog.Color;
-                                else if (selectedShape is EllipseShape ellipse)
-                                    ellipse.FillColor = colorDialog.Color;
-                                else if (selectedShape is HexagonShape hexagon)
-                                    hexagon.FillColor = colorDialog.Color;
-                                else if (selectedShape is PolylineShape polyline)
-                                    polyline.FillColor = colorDialog.Color;
-
-                                panel2.Invalidate();
-                            }
-                        }
+                        isRotating = true;
+                        dragStart = e.Location;
+                        return;
                     }
-                    return;
                 }
 
-            }
-
-            
-
-            if (currentTool == Tool.Select)
+                // Проверка — попали ли в хэндлы
+                if (selectedShape != null)
                 {
+                    List<Rectangle> handles = null;
 
-                    // Попытка начать вращение при зажатом Shift
-                    if (ModifierKeys == Keys.Shift && selectedShape != null)
-                    {
-                        if ((selectedShape is RectangleShape rectShape && rectShape.Contains(e.Location)) ||
-                            (selectedShape is EllipseShape ellipseShape && ellipseShape.Contains(e.Location)) ||
-                            (selectedShape is HexagonShape hexagonShape && hexagonShape.Contains(e.Location)))
-                        {
-                            isRotating = true;
-                            dragStart = e.Location;
-                            return;
-                        }
-                    }
-
-                    // Проверка — попали ли в хэндлы
-                    if (selectedShape != null)
-                    {
-                        List<Rectangle> handles = null;
-
-                        if (selectedShape is RectangleShape rectShape)
-                            handles = rectShape.GetHandles();
-                        else if (selectedShape is EllipseShape ellipseShape)
-                            handles = ellipseShape.GetHandles();
-                        else if (selectedShape is HexagonShape hexagonShape)
-                            handles = hexagonShape.GetHandles();
-                        else if (selectedShape is PolylineShape polylineShape)
-                            handles = polylineShape.GetHandles();
-                        else if (selectedShape is BezierShape bezierShape)
-                            handles = bezierShape.GetHandles();
-                        else if (selectedShape is ClosedPolylineShape closedShape)
-                            handles = closedShape.GetHandles();
+                    if (selectedShape is RectangleShape rectShape)
+                        handles = rectShape.GetHandles();
+                    else if (selectedShape is EllipseShape ellipseShape)
+                        handles = ellipseShape.GetHandles();
+                    else if (selectedShape is HexagonShape hexagonShape)
+                        handles = hexagonShape.GetHandles();
+                    else if (selectedShape is PolylineShape polylineShape)
+                        handles = polylineShape.GetHandles();
+                    else if (selectedShape is BezierShape bezierShape)
+                        handles = bezierShape.GetHandles();
+                    else if (selectedShape is ClosedPolylineShape closedShape)
+                        handles = closedShape.GetHandles();
 
 
 
                     if (handles != null)
+                    {
+                        for (int i = 0; i < handles.Count; i++)
                         {
-                            for (int i = 0; i < handles.Count; i++)
+                            if (handles[i].Contains(e.Location))
                             {
-                                if (handles[i].Contains(e.Location))
-                                {
-                                    selectedHandleIndex = i;
-                                    isResizing = true;
-                                    return;
-                                }
+                                selectedHandleIndex = i;
+                                isResizing = true;
+                                return;
                             }
                         }
                     }
-
-                    // Проверка — попали ли в фигуру
-                    // Проверка — попали ли в фигуру
-                    // Проверка — попали ли в фигуру
-                    selectedShape = null;
-                    for (int i = shapes.Count - 1; i >= 0; i--)
-                    {
-                        if (shapes[i] is RectangleShape rect && rect.Contains(e.Location))
-                        {
-                            selectedShape = rect;
-                            break;
-                        }
-                        else if (shapes[i] is EllipseShape ellipse && ellipse.Contains(e.Location))
-                        {
-                            selectedShape = ellipse;
-                            break;
-                        }
-                        else if (shapes[i] is HexagonShape hexagon && hexagon.Contains(e.Location))
-                        {
-                            selectedShape = hexagon;
-                            break;
-                        }
-                        else if (shapes[i] is PolylineShape polyline && polyline.Contains(e.Location))
-                        {
-                            selectedShape = polyline;
-                            break;
-                        }
-                        else if (shapes[i] is BezierShape bezier && bezier.Contains(e.Location))
-                        {
-                            selectedShape = bezier;
-                            break;
-                        }
-                        else if (shapes[i] is ClosedPolylineShape closed && closed.Contains(e.Location))
-                        {
-                            selectedShape = closed;
-                            break;
-                        }
                 }
 
-                    // Если фигура выбрана и нажали мышь — начать перемещение
-                    if (selectedShape != null)
+
+                selectedShape = null;
+
+              
+
+
+                // Проверка — попали ли в фигуру
+                // Проверка — попали ли в фигуру
+                // Проверка — попали ли в фигуру
+                selectedShape = null;
+
+                for (int i = shapes.Count - 1; i >= 0; i--)
+                {
+                    var shape = shapes[i];
+
+                    if (shape is RectangleShape rect && rect.Contains(e.Location) && !rect.IsFilled)
                     {
-                        dragStart = e.Location;
-                        isDragging = true;
+                        selectedShape = rect;
+                        break;
                     }
-
-
-
-
-                    panel2.Invalidate();
+                    else if (shape is EllipseShape ellipse && ellipse.Contains(e.Location) && !ellipse.IsFilled)
+                    {
+                        selectedShape = ellipse;
+                        break;
+                    }
+                    else if (shape is HexagonShape hex && hex.Contains(e.Location) && !hex.IsFilled)
+                    {
+                        selectedShape = hex;
+                        break;
+                    }
+                    else if (shape is PolylineShape poly && poly.Contains(e.Location) && !poly.IsFilled)
+                    {
+                        selectedShape = poly;
+                        break;
+                    }
+                    else if (shape is BezierShape bezier && bezier.Contains(e.Location) && !bezier.IsFilled)
+                    {
+                        selectedShape = bezier;
+                        break;
+                    }
+                    else if (shape is ClosedPolylineShape closed && closed.Contains(e.Location))
+                    {
+                        selectedShape = closed;
+                        break;
+                    }
                 }
+
+                isDrawing = false;
+                // Если фигура выбрана и нажали мышь — начать перемещение
+                if (selectedShape != null)
+                {
+                    dragStart = e.Location;
+                    isDragging = true;
+                }
+
+
+
+
+                panel2.Invalidate();
             }
-            
+        }
+
+
+        public void FloodFill(Bitmap bmp, Point pt, Color targetColor, Color replacementColor)
+        {
+            if (targetColor.ToArgb() == replacementColor.ToArgb()) return;
+            if (pt.X < 0 || pt.Y < 0 || pt.X >= bmp.Width || pt.Y >= bmp.Height) return;
+
+            Queue<Point> pixels = new Queue<Point>();
+            pixels.Enqueue(pt);
+
+            while (pixels.Count > 0)
+            {
+                Point current = pixels.Dequeue();
+                if (current.X < 0 || current.Y < 0 || current.X >= bmp.Width || current.Y >= bmp.Height)
+                    continue;
+
+                if (bmp.GetPixel(current.X, current.Y).ToArgb() != targetColor.ToArgb())
+                    continue;
+
+                bmp.SetPixel(current.X, current.Y, replacementColor);
+
+                pixels.Enqueue(new Point(current.X + 1, current.Y));
+                pixels.Enqueue(new Point(current.X - 1, current.Y));
+                pixels.Enqueue(new Point(current.X, current.Y + 1));
+                pixels.Enqueue(new Point(current.X, current.Y - 1));
+            }
+        }
 
 
 
@@ -543,7 +633,7 @@ namespace Form1
         private void panel2_MouseUp(object sender, MouseEventArgs e)
         {
             // Завершаем рисование
-            if (isDrawing && currentTool == Tool.Rectangle)
+            if (isDrawing && currentTool == Tool.Rectangle && !isDragging && !isResizing)
             {
                 endPoint = e.Location;
                 isDrawing = false;
@@ -554,7 +644,7 @@ namespace Form1
                     panel2.Invalidate();
                 }
             }
-            else if (isDrawing && currentTool == Tool.Ellipse)
+            else if (isDrawing && currentTool == Tool.Ellipse && !isDragging && !isResizing)
             {
                 endPoint = e.Location;
                 isDrawing = false;
@@ -565,7 +655,7 @@ namespace Form1
                     panel2.Invalidate();
                 }
             }
-            else if (isDrawing && currentTool == Tool.Hexagon)
+            else if (isDrawing && currentTool == Tool.Hexagon && !isDragging && !isResizing)
             {
                 endPoint = e.Location;
                 isDrawing = false;
@@ -576,7 +666,7 @@ namespace Form1
                     panel2.Invalidate();
                 }
             }
-            else if (currentTool == Tool.ClosedPolyline && isDrawingPolyline && e.Clicks == 2)
+            else if (currentTool == Tool.ClosedPolyline && isDrawingPolyline && e.Clicks == 2 && !isDragging && !isResizing)
             {
                 if (polylinePoints.Count >= 3)
                 {
@@ -587,7 +677,7 @@ namespace Form1
                 }
             }
 
-            else if (currentTool == Tool.Polyline && isDrawingPolyline)
+            else if (currentTool == Tool.Polyline && isDrawingPolyline && !isDragging && !isResizing)
             {
                 if (e.Clicks == 2) // Двойной клик завершает ломаную
                 {
@@ -620,20 +710,7 @@ namespace Form1
                 isRotating = false;
             }
 
-            if (isDrawing && currentTool == Tool.Ellipse)
-            {
-                endPoint = e.Location;
-                isDrawing = false;
-                shapes.Add(new EllipseShape(GetRectangle(startPoint, endPoint)));
-                panel2.Invalidate();
-            }
-            else if (isDrawing && currentTool == Tool.Hexagon)
-            {
-                endPoint = e.Location;
-                isDrawing = false;
-                shapes.Add(new HexagonShape(GetRectangle(startPoint, endPoint)));
-                panel2.Invalidate();
-            }
+       
 
         }
 
@@ -753,21 +830,26 @@ else if (selectedShape is ClosedPolylineShape closed)
                     g.DrawLines(pen, polylinePoints.ToArray());
                 }
             }
-            else if (currentTool == Tool.Bezier && bezierPoints.Count >= 2)
+            else if (currentTool == Tool.Bezier && bezierPoints.Count >= 4)
             {
                 using (Pen pen = new Pen(Color.Blue, 1))
                 {
                     for (int i = 0; i <= bezierPoints.Count - 4; i += 3)
                     {
-                        g.DrawBezier(pen, bezierPoints[i], bezierPoints[i + 1], bezierPoints[i + 2], bezierPoints[i + 3]);
+                        g.DrawBezier(pen,
+                            bezierPoints[i],
+                            bezierPoints[i + 1],
+                            bezierPoints[i + 2],
+                            bezierPoints[i + 3]);
                     }
 
-                    // Вспомогательные линии
+                    // Вспомогательные линии (для наглядности)
                     for (int i = 0; i < bezierPoints.Count - 1; i++)
                     {
-                        g.DrawLine(Pens.Gray, bezierPoints[i], bezierPoints[i + 1]);
+                        g.DrawLine(Pens.LightGray, bezierPoints[i], bezierPoints[i + 1]);
                     }
 
+                    // Рисуем точки
                     foreach (var pt in bezierPoints)
                     {
                         g.FillRectangle(Brushes.Red, pt.X - 2, pt.Y - 2, 4, 4);
@@ -776,7 +858,8 @@ else if (selectedShape is ClosedPolylineShape closed)
             }
 
 
-                if (backgroundImage != null)
+
+            if (backgroundImage != null)
             {
                 e.Graphics.DrawImage(backgroundImage, 0, 0, panel2.Width, panel2.Height);
             }
@@ -923,7 +1006,9 @@ else if (selectedShape is ClosedPolylineShape closed)
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            
+            typeof(Panel).InvokeMember("DoubleBuffered",
+            System.Reflection.BindingFlags.SetProperty | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            null, panel2, new object[] { true });
         }
 
         private void сохранитьToolStripMenuItem_Click(object sender, EventArgs e)

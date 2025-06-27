@@ -9,6 +9,7 @@ public class BezierShape
     public Color Color { get; set; } = Color.Black;
     public Color FillColor { get; set; } = Color.Transparent;
     public float Rotation { get; set; } = 0;
+    public bool IsFilled { get; set; } = false;
 
     private Rectangle _rect;
 

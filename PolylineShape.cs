@@ -13,6 +13,7 @@ namespace GraphEditor
         public Color Color { get; set; } = Color.Black;
         public Color FillColor { get; set; } = Color.Transparent;
 
+        public bool IsFilled { get; set; } = false;
         public PolylineShape(List<Point> points)
         {
             Points = new List<Point>(points);
